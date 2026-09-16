@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 影音報價計算器</title>
+  <meta name="description" content="整合 Higgsfield 點數、人力與製作風險的 AI 影音報價試算工具。">
+  <style>
+    :root {
+      --cyprus: #004741;
+      --cyprus-deep: #00352f;
+      --cyprus-soft: #dce9e4;
+      --sand: #F0EDE4;
+      --paper: #fffdf7;
+      --ink: #10231f;
+      --muted: #566760;
+      --line: #c8d1cb;
+      --focus: #21F1A8;
+      --danger: #a73f36;
+      --warning: #8a5c0a;
+      --radius: 18px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--sand);
+      color: var(--ink);
+      font-family: Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      font-size: 17px;
+      line-height: 1.55;
+      font-weight: 400;
+    }
+    button, input, select, textarea { font: inherit; }
+    button, input, select { min-height: 46px; }
+    button, input, select, textarea { border-radius: var(--radius-sm); }
+    button { cursor: pointer; }
+    :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    input:disabled { background: #e7e7e2; color: #74817c; cursor: not-allowed; }
+    .skip-link { position: fixed; top: -80px; left: 16px; z-index: 30; background: var(--paper); color: var(--cyprus); padding: 12px 16px; }
+    .skip-link:focus { top: 12px; }
+
+    .app-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 16px clamp(18px, 4vw, 56px);
+      background: var(--cyprus);
+      color: white;
+      border-bottom: 1px solid rgba(255,255,255,.24);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border: 2px solid var(--focus); border-radius: 50%; color: var(--focus); flex: 0 0 auto; }
+    .brand strong { display: block; font-size: 18px; font-weight: 700; }
+    .brand small { display: block; color: #cfe2dc; font-size: 13px; }
+    .toolbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .save-status { color: #cfe2dc; font-size: 14px; padding-inline: 4px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      padding: 10px 16px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform .16s ease, background-color .16s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--focus); color: var(--cyprus-deep); }
+    .btn-light { background: var(--paper); color: var(--cyprus); border-color: var(--paper); }
+    .btn-ghost { background: transparent; color: white; border-color: rgba(255,255,255,.46); }
+    .btn-outline { background: transparent; color: var(--cyprus); border-color: var(--cyprus); }
+    .btn-danger { background: transparent; color: var(--danger); border-color: #d9aaa5; min-height: 40px; padding: 7px 12px; }
+    .btn-small { min-height: 40px; padding: 8px 12px; font-size: 15px; }
+    .icon { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .page { max-width: 1680px; margin: 0 auto; padding: 34px clamp(18px, 4vw, 56px) 72px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); align-items: end; gap: 30px; margin-bottom: 28px; }
+    .eyebrow { margin: 0 0 8px; color: var(--cyprus); font-weight: 700; letter-spacing: .08em; font-size: 14px; }
+    h1 { margin: 0; font-size: clamp(34px, 5vw, 62px); line-height: 1.02; letter-spacing: -.045em; color: var(--cyprus-deep); }
+    .lead { max-width: 780px; margin: 18px 0 0; color: var(--muted); font-size: clamp(18px, 2vw, 22px); }
+    .preset-card { background: var(--cyprus); color: white; padding: 20px; border-radius: var(--radius); }
+    .preset-card label { color: #dceae5; }
+    .preset-card select { background: white; border-color: white; }
+
+    .app-shell { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(380px, .88fr); gap: 24px; align-items: start; }
+    .app-shell > * { min-width: 0; }
+    .input-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .panel, details.section-card { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); }
+    details.section-card { overflow: clip; }
+    details.section-card > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 22px; cursor: pointer; font-size: 21px; font-weight: 700; color: var(--cyprus-deep); }
+    details.section-card > summary::-webkit-details-marker { display: none; }
+    details.section-card > summary::after { content: "+"; display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 50%; font-size: 22px; font-weight: 400; }
+    details.section-card[open] > summary::after { content: "−"; }
+    .section-body { border-top: 1px solid var(--line); padding: 22px; }
+    .section-intro { margin: -3px 0 20px; color: var(--muted); }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .form-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .field { display: grid; gap: 7px; align-content: start; }
+    .field.full { grid-column: 1 / -1; }
+    label, .field-label { font-weight: 600; color: var(--ink); }
+    .label-with-help { display: flex; align-items: center; gap: 8px; }
+    .label-with-help label { flex: 0 1 auto; }
+    .info-button {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      min-height: 28px;
+      padding: 0;
+      border: 1px solid var(--cyprus);
+      border-radius: 50%;
+      background: white;
+      color: var(--cyprus);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .info-button:active { background: var(--cyprus-soft); }
+    .hint { color: var(--muted); font-size: 14px; line-height: 1.4; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #aebdb5;
+      background: white;
+      color: var(--ink);
+      padding: 11px 13px;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    input[aria-invalid="true"] { border-color: var(--danger); background: #fff7f6; }
+    .field-error { min-height: 20px; color: var(--danger); font-size: 14px; }
+    .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .choice-row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+    .choice { position: relative; }
+    .choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .choice label { display: grid; gap: 3px; min-height: 72px; padding: 12px 14px; border: 1px solid #aebdb5; border-radius: var(--radius-sm); background: white; cursor: pointer; }
+    .choice input:checked + label { border: 2px solid var(--cyprus); background: var(--cyprus-soft); }
+    .choice small { color: var(--muted); font-weight: 400; }
+
+    .table-wrap { overflow-x: auto; contain: paint; }
+    .editable-table { width: 100%; min-width: 650px; border-collapse: collapse; }
+    .editable-table th { padding: 10px 8px; color: var(--muted); font-size: 14px; text-align: left; border-bottom: 1px solid var(--line); }
+    .editable-table td { padding: 10px 8px; border-bottom: 1px solid #e4e7e2; vertical-align: middle; }
+    .editable-table input { min-width: 100px; }
+    .editable-table .row-name { min-width: 190px; }
+    .row-total { min-width: 120px; font-weight: 700; text-align: right; white-space: nowrap; }
+    .table-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; }
+    .table-total { font-size: 19px; font-weight: 700; color: var(--cyprus); }
+
+    .results-panel { position: static; overflow: hidden; }
+    .results-head { background: var(--cyprus); color: white; padding: 24px; }
+    .results-head p { margin: 0 0 4px; color: #cae2da; font-weight: 600; }
+    .grand-total { margin: 0; font-size: clamp(38px, 5vw, 60px); line-height: 1.06; color: white; letter-spacing: -.04em; }
+    .results-body { padding: 22px; }
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .metric { padding: 15px; background: var(--sand); border-radius: var(--radius-sm); }
+    .metric span { display: block; color: var(--muted); font-size: 14px; }
+    .metric strong { display: block; margin-top: 3px; font-size: 21px; color: var(--cyprus-deep); }
+    .result-section { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+    .result-section h2 { margin: 0 0 14px; font-size: 20px; }
+    .result-list { display: grid; gap: 10px; margin: 0; }
+    .result-line { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: baseline; }
+    .result-line dt { color: var(--muted); }
+    .result-line dd { margin: 0; font-weight: 700; text-align: right; }
+    .result-line.total { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 20px; color: var(--cyprus); }
+    .bar-chart { display: grid; gap: 12px; }
+    .bar-row { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 10px; }
+    .bar-track { height: 12px; background: #dce3dd; border-radius: 999px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--cyprus); border-radius: inherit; min-width: 2px; }
+    .bar-row:nth-child(2) .bar-fill { background: #2d7569; }
+    .bar-row:nth-child(3) .bar-fill { background: #7fa092; }
+    .assumption-list { margin: 0; padding-left: 20px; color: var(--muted); }
+    .notice { margin-top: 16px; padding: 14px 16px; border-left: 4px solid var(--warning); background: #fff8e9; color: #68480d; }
+    .error-summary { display: none; margin-bottom: 16px; padding: 16px; border: 2px solid var(--danger); background: #fff7f6; color: var(--danger); border-radius: var(--radius-sm); }
+    .error-summary.show { display: block; }
+
+    .help-dialog {
+      width: min(620px, calc(100vw - 28px));
+      max-height: min(760px, calc(100vh - 40px));
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius);
+      background: var(--paper);
+      color: var(--ink);
+      overflow: hidden;
+    }
+    .help-dialog::backdrop { background: rgba(0, 35, 31, .68); }
+    .help-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 24px 26px; background: var(--cyprus); color: white; }
+    .help-dialog-head h2 { margin: 0; font-size: clamp(24px, 4vw, 32px); line-height: 1.2; color: white; }
+    .dialog-close { flex: 0 0 auto; width: 40px; min-height: 40px; padding: 0; border: 1px solid rgba(255,255,255,.5); border-radius: 50%; background: transparent; color: white; font-size: 27px; line-height: 1; }
+    .help-dialog-body { padding: 26px; overflow-y: auto; }
+    .help-dialog-body p { margin: 0 0 18px; }
+    .help-formula { padding: 16px 18px; border-left: 4px solid var(--cyprus); background: var(--cyprus-soft); font-weight: 600; }
+    .help-example { padding: 18px; background: var(--sand); border-radius: var(--radius-sm); }
+    .help-example strong { display: block; margin-bottom: 6px; color: var(--cyprus); }
+    .help-note { color: var(--muted); font-size: 15px; }
+
+    .client-quote { display: none; }
+    .client-sheet { background: white; color: #17211e; max-width: 980px; margin: 0 auto; padding: 52px; }
+    .client-sheet-head { display: flex; justify-content: space-between; gap: 32px; padding-bottom: 28px; border-bottom: 4px solid var(--cyprus); }
+    .client-sheet h1 { font-size: 42px; }
+    .client-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px 32px; margin: 30px 0; }
+    .client-meta span { display: block; color: var(--muted); font-size: 14px; }
+    .quote-table { width: 100%; border-collapse: collapse; }
+    .quote-table th, .quote-table td { padding: 15px 12px; border-bottom: 1px solid #cdd5d0; text-align: left; }
+    .quote-table th:last-child, .quote-table td:last-child { text-align: right; }
+    .client-total { margin: 30px 0 0 auto; max-width: 430px; }
+    .client-total .result-line { padding: 7px 0; }
+    .client-total .grand { padding-top: 16px; border-top: 3px solid var(--cyprus); font-size: 28px; color: var(--cyprus); }
+    .quote-note { margin-top: 34px; padding: 20px; background: var(--sand); white-space: pre-wrap; }
+
+    @media (max-width: 1100px) {
+      .app-shell { grid-template-columns: minmax(0, 1fr) 400px; }
+      .form-grid.three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 900px) {
+      .app-toolbar { position: static; align-items: flex-start; flex-direction: column; }
+      .toolbar-actions { justify-content: flex-start; }
+      .hero, .app-shell { grid-template-columns: 1fr; }
+      .results-panel { position: static; }
+      .hero { align-items: stretch; }
+    }
+    @media (max-width: 620px) {
+      body { font-size: 17px; }
+      .page { padding-inline: 14px; }
+      .toolbar-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+      .save-status { grid-column: 1 / -1; }
+      .toolbar-actions .btn:last-of-type { grid-column: 1 / -1; }
+      .btn { width: 100%; }
+      .form-grid, .form-grid.three, .choice-row, .metric-grid { grid-template-columns: 1fr; }
+      .client-meta { grid-template-columns: 1fr; }
+      details.section-card > summary, .section-body, .results-body { padding-inline: 17px; }
+      .results-head { padding-inline: 18px; }
+    }
+
+    @media print {
+      body { background: white; font-size: 12pt; color: #17211e; }
+      .app-toolbar, .page, .input-panel, [data-private], .export-actions { display: none !important; }
+      .client-quote { display: block !important; }
+      .client-sheet { max-width: none; padding: 0; }
+      .client-sheet h1 { font-size: 28pt; }
+      .quote-note { break-inside: avoid; }
+      @page { size: A4; margin: 14mm; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#calculator">跳到計算表</a>
+  <header class="app-toolbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg>
+      </span>
+      <span><strong>AI 影音報價計算器</strong><small>成本、風險與報價一次算清楚</small></span>
+    </div>
+    <div class="toolbar-actions export-actions">
+      <span class="save-status" id="save-status" aria-live="polite">尚未儲存</span>
+      <button class="btn btn-ghost" type="button" id="download-save-button">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>下載存檔
+      </button>
+      <button class="btn btn-ghost" type="button" id="load-save-button">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 21V9m0 0 4 4m-4-4-4 4M5 3h14v4"/></svg>載入存檔
+      </button>
+      <input id="save-file-input" type="file" accept="application/json,.json" hidden>
+      <button class="btn btn-ghost" type="button" id="reset-button">恢復預設</button>
+      <button class="btn btn-light" type="button" id="png-button">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>下載 PNG
+      </button>
+      <button class="btn btn-primary" type="button" id="print-button">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>列印 / PDF
+      </button>
+    </div>
+  </header>
+
+  <main class="page" id="calculator">
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">HIGGSFIELD 成本模型</p>
+        <h1 id="page-title">把生成成本，算進完整製作。</h1>
+        <p class="lead">從採用率、修改量與 Higgsfield 點數，到人力、風險和利潤，所有預設都能調整。</p>
+      </div>
+      <div class="preset-card">
+        <label for="preset-select">快速套用情境</label>
+        <select id="preset-select">
+          <option value="social">30 秒社群影片</option>
+          <option value="brand">3 分鐘品牌情境短劇</option>
+          <option value="series">1 分鐘 × 10 集系列短劇</option>
+          <option value="film">100 分鐘長片</option>
+          <option value="custom" selected>自訂</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="error-summary" id="error-summary" role="alert"></div>
+
+    <div class="app-shell">
+      <form class="input-panel" id="quote-form" novalidate>
+        <details class="section-card" open>
+          <summary>01　專案與交付</summary>
+          <div class="section-body">
+            <div class="form-grid">
+              <div class="field"><label for="project-name">專案名稱</label><input id="project-name" value="AI 品牌影片製作" autocomplete="off"></div>
+              <div class="field"><label for="client-name">客戶名稱</label><input id="client-name" value="客戶名稱" autocomplete="organization"></div>
+              <div class="field"><label for="quote-date">報價日期</label><input id="quote-date" type="date"></div>
+              <div class="field"><label for="valid-until">有效期限</label><input id="valid-until" type="date"></div>
+              <div class="field full">
+                <span class="field-label">單集成片長度</span>
+                <div class="input-pair">
+                  <label class="field"><span>分鐘</span><input id="duration-minutes" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+                  <label class="field"><span>秒數</span><input id="duration-seconds" type="number" min="0" step="1" value="30" inputmode="numeric"></label>
+                </div>
+                <span class="field-error" id="duration-error"></span>
+              </div>
+              <div class="field"><label for="episodes">集數</label><input id="episodes" type="number" min="1" step="1" value="1"><span class="field-error" id="episodes-error"></span></div>
+              <div class="field"><label for="versions">交付版本數</label><input id="versions" type="number" min="1" step="1" value="1"><span class="hint">不同語言、尺寸或剪輯版本。</span><span class="field-error" id="versions-error"></span></div>
+              <div class="field"><label for="aspect-ratio">畫面比例</label><select id="aspect-ratio"><option>16:9</option><option>9:16</option><option>1:1</option><option>4:3</option><option>自訂</option></select></div>
+              <div class="field"><label for="resolution">解析度</label><select id="resolution"><option>1080p</option><option>720p</option><option>4K 後製輸出</option><option>自訂</option></select></div>
+              <div class="field full"><label for="deliverables">交付內容</label><textarea id="deliverables">AI 影片企劃、生成、剪輯、聲音處理與完稿輸出</textarea></div>
+            </div>
+          </div>
+        </details>
+
+        <details class="section-card" open>
+          <summary>02　生成與抽卡假設</summary>
+          <div class="section-body">
+            <p class="section-intro">採用率越低，代表需要生成更多素材才能留下可用畫面。</p>
+            <div class="form-grid">
+              <div class="field"><label for="model-name">模型</label><input id="model-name" value="Higgsfield Seedance 2.5"></div>
+              <div class="field"><div class="label-with-help"><label for="adoption-rate">素材採用率（%）</label><button class="info-button" type="button" data-help="adoption-rate" aria-label="說明素材採用率">i</button></div><input id="adoption-rate" type="number" min="1" max="100" step="1" value="20"><span class="hint">一般商用敘事片預設 20%。</span><span class="field-error" id="adoption-rate-error"></span></div>
+              <div class="field"><div class="label-with-help"><label for="revision-rate">修改預備量（%）</label><button class="info-button" type="button" data-help="revision-rate" aria-label="說明修改預備量">i</button></div><input id="revision-rate" type="number" min="0" step="1" value="20"><span class="hint">第一版完成後的重生與調整空間。</span></div>
+              <div class="field"><label for="custom-credits-per-second">自訂每生成秒點數</label><input id="custom-credits-per-second" type="number" min="0" step="0.1" value="9"><span class="hint">切換自訂模式時使用。</span></div>
+              <div class="field full">
+                <span class="field-label">Higgsfield 點數模式</span>
+                <div class="choice-row" id="credit-mode">
+                  <div class="choice"><input type="radio" name="credit-mode" id="credit-preferred" value="preferred" checked><label for="credit-preferred"><strong>優待點數</strong><small>Seedance 2.5／1080p，每秒 9 點</small></label></div>
+                  <div class="choice"><input type="radio" name="credit-mode" id="credit-regular" value="regular"><label for="credit-regular"><strong>一般點數</strong><small>Seedance 2.5／1080p，每秒 16 點</small></label></div>
+                  <div class="choice"><input type="radio" name="credit-mode" id="credit-custom" value="custom"><label for="credit-custom"><strong>自訂點數</strong><small>使用上方自行輸入的點數</small></label></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="section-card" open>
+          <summary>03　Higgsfield 點數成本</summary>
+          <div class="section-body">
+            <div class="form-grid">
+              <div class="field full"><label for="credit-pack">點數成本來源</label><select id="credit-pack">
+                <optgroup label="個人方案｜月繳">
+                  <option value="starter-monthly">Starter｜200 點／US$15</option>
+                  <option value="plus-monthly">Plus｜1,000 點／US$49</option>
+                  <option value="ultra3000-monthly">Ultra｜3,000 點／US$129</option>
+                  <option value="ultra6000-monthly">Ultra｜6,000 點／US$250</option>
+                  <option value="ultra9000-monthly">Ultra｜9,000 點／US$375</option>
+                </optgroup>
+                <optgroup label="個人方案｜年繳每月等值">
+                  <option value="starter-annual">Starter｜200 點／US$15</option>
+                  <option value="plus-annual">Plus｜1,000 點／US$39</option>
+                  <option value="ultra3000-annual">Ultra｜3,000 點／US$99</option>
+                  <option value="ultra6000-annual">Ultra｜6,000 點／US$193.50</option>
+                  <option value="ultra9000-annual">Ultra｜9,000 點／US$270</option>
+                </optgroup>
+                <optgroup label="額外點數包｜90 天有效">
+                  <option value="100">100 點｜US$5.30</option>
+                  <option value="200">200 點｜US$10.19</option>
+                  <option value="500">500 點｜US$25</option>
+                  <option value="1000" selected>1,000 點｜US$48</option>
+                  <option value="2000">2,000 點｜US$89</option>
+                  <option value="4000">4,000 點｜US$179</option>
+                  <option value="5000">5,000 點｜US$213</option>
+                </optgroup>
+                <option value="custom">自訂來源</option>
+              </select></div>
+              <div class="field"><label for="credit-pack-credits">取得點數</label><input id="credit-pack-credits" type="number" min="1" step="1" value="1000"><span class="field-error" id="credit-pack-credits-error"></span></div>
+              <div class="field"><label for="credit-pack-usd">方案／點數包價格（USD）</label><input id="credit-pack-usd" type="number" min="0" step="0.01" value="48"></div>
+              <div class="field"><label for="exchange-rate">美元匯率（TWD）</label><input id="exchange-rate" type="number" min="0.01" step="0.01" value="32.50"><span class="field-error" id="exchange-rate-error"></span></div>
+              <div class="field"><label for="overseas-fee-rate">海外交易／稅費（%）</label><input id="overseas-fee-rate" type="number" min="0" step="0.1" value="3"></div>
+            </div>
+            <div class="notice">訂閱點數會定期重置；額外點數目前為 90 天有效。方案功能與 Unlimited 生成尚未折抵進每點成本，正式採購前仍應確認帳號價格與結帳稅額。</div>
+          </div>
+        </details>
+
+        <details class="section-card" open>
+          <summary>04　製作人力</summary>
+          <div class="section-body">
+            <p class="section-intro">人日是投入工作量，不等於曆日。可依團隊角色拆開估算。</p>
+            <div class="table-wrap">
+              <table class="editable-table">
+                <thead><tr><th>工作項目</th><th>人日</th><th>每日單價</th><th>小計</th><th><span class="sr-only">操作</span></th></tr></thead>
+                <tbody id="labor-rows"></tbody>
+              </table>
+            </div>
+            <div class="table-actions"><button class="btn btn-outline btn-small" id="add-labor" type="button">新增人力</button><div class="table-total">人力合計 <span id="labor-total">NT$0</span></div></div>
+          </div>
+        </details>
+
+        <details class="section-card">
+          <summary>05　其他成本</summary>
+          <div class="section-body">
+            <div class="table-wrap">
+              <table class="editable-table">
+                <thead><tr><th>成本項目</th><th>數量</th><th>單價</th><th>小計</th><th><span class="sr-only">操作</span></th></tr></thead>
+                <tbody id="other-rows"></tbody>
+              </table>
+            </div>
+            <div class="table-actions"><button class="btn btn-outline btn-small" id="add-other" type="button">新增其他成本</button><div class="table-total">其他合計 <span id="other-total">NT$0</span></div></div>
+          </div>
+        </details>
+
+        <details class="section-card" open>
+          <summary>06　報價調整</summary>
+          <div class="section-body">
+            <div class="form-grid three">
+              <div class="field"><div class="label-with-help"><label for="management-rate">管理費（%）</label><button class="info-button" type="button" data-help="management-rate" aria-label="說明管理費">i</button></div><input id="management-rate" type="number" min="0" step="1" value="10"></div>
+              <div class="field"><div class="label-with-help"><label for="contingency-rate">風險預備金（%）</label><button class="info-button" type="button" data-help="contingency-rate" aria-label="說明風險預備金">i</button></div><input id="contingency-rate" type="number" min="0" step="1" value="10"></div>
+              <div class="field"><label for="profit-rate">利潤加成（%）</label><input id="profit-rate" type="number" min="0" step="1" value="25"></div>
+              <div class="field"><label for="discount">專案折扣（TWD）</label><input id="discount" type="number" min="0" step="100" value="0"></div>
+              <div class="field"><label for="tax-rate">營業稅（%）</label><input id="tax-rate" type="number" min="0" step="1" value="5"></div>
+              <div class="field"><label for="rounding-unit">報價進位單位</label><select id="rounding-unit"><option value="1">不進位</option><option value="100">百元</option><option value="1000" selected>千元</option><option value="5000">五千元</option><option value="10000">萬元</option></select></div>
+              <div class="field full"><label for="quote-note">客戶版備註</label><textarea id="quote-note">本報價包含企劃、AI 生成、剪輯與完稿輸出。修改範圍與追加費用依正式合約約定；第三方素材與授權以實際使用項目為準。</textarea></div>
+            </div>
+          </div>
+        </details>
+      </form>
+
+      <aside class="panel results-panel" aria-label="報價結果">
+        <div class="results-head"><p>預估含稅總價</p><h2 class="grand-total" id="grand-total" aria-live="polite">NT$0</h2></div>
+        <div class="results-body">
+          <div class="metric-grid">
+            <div class="metric"><span>未稅報價</span><strong id="subtotal-before-tax">NT$0</strong></div>
+            <div class="metric" data-private><span>直接成本</span><strong id="direct-cost">NT$0</strong></div>
+            <div class="metric" data-private><span>預估毛利率</span><strong id="gross-margin">0%</strong></div>
+            <div class="metric"><span>每成片秒</span><strong id="per-second">NT$0</strong></div>
+          </div>
+
+          <section class="result-section" data-private>
+            <h2>生產量推估</h2>
+            <dl class="result-list">
+              <div class="result-line"><dt>成片總長</dt><dd id="finished-seconds">0 秒</dd></div>
+              <div class="result-line"><dt>首版生成量</dt><dd id="first-pass-seconds">0 秒</dd></div>
+              <div class="result-line"><dt>修改生成量</dt><dd id="revision-seconds">0 秒</dd></div>
+              <div class="result-line"><dt>總生成量</dt><dd id="generated-seconds">0 秒</dd></div>
+              <div class="result-line"><dt>未採用素材</dt><dd id="unused-seconds">0 秒</dd></div>
+              <div class="result-line total"><dt>預估消耗點數</dt><dd id="total-credits">0 點</dd></div>
+            </dl>
+          </section>
+
+          <section class="result-section" data-private>
+            <h2>成本結構</h2>
+            <div class="bar-chart" id="cost-breakdown">
+              <div class="bar-row"><span>模型</span><div class="bar-track"><div class="bar-fill" id="model-bar"></div></div><strong id="model-share">0%</strong></div>
+              <div class="bar-row"><span>人力</span><div class="bar-track"><div class="bar-fill" id="labor-bar"></div></div><strong id="labor-share">0%</strong></div>
+              <div class="bar-row"><span>其他</span><div class="bar-track"><div class="bar-fill" id="other-bar"></div></div><strong id="other-share">0%</strong></div>
+            </div>
+            <dl class="result-list" style="margin-top:16px">
+              <div class="result-line"><dt>Higgsfield 模型成本</dt><dd id="model-cost">NT$0</dd></div>
+              <div class="result-line"><dt>人力成本</dt><dd id="labor-cost">NT$0</dd></div>
+              <div class="result-line"><dt>其他成本</dt><dd id="other-cost">NT$0</dd></div>
+              <div class="result-line"><dt>管理費</dt><dd id="management-fee">NT$0</dd></div>
+              <div class="result-line"><dt>風險預備金</dt><dd id="contingency">NT$0</dd></div>
+              <div class="result-line"><dt>利潤加成</dt><dd id="profit">NT$0</dd></div>
+              <div class="result-line"><dt>折扣</dt><dd id="discount-result">− NT$0</dd></div>
+              <div class="result-line total"><dt>營業稅</dt><dd id="tax">NT$0</dd></div>
+            </dl>
+          </section>
+
+          <section class="result-section" data-private>
+            <h2>單位與點數</h2>
+            <dl class="result-list">
+              <div class="result-line"><dt>每點成本</dt><dd id="per-credit">NT$0</dd></div>
+              <div class="result-line"><dt>點數來源等值數量</dt><dd id="pack-equivalent">0 份</dd></div>
+              <div class="result-line"><dt>每成片分鐘</dt><dd id="per-minute">NT$0</dd></div>
+              <div class="result-line"><dt>每集報價</dt><dd id="per-episode">NT$0</dd></div>
+            </dl>
+          </section>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <section class="client-quote" id="client-quote" aria-label="客戶報價摘要">
+    <article class="client-sheet">
+      <header class="client-sheet-head">
+        <div><p class="eyebrow">AI VIDEO PRODUCTION</p><h1>影音製作報價</h1></div>
+        <div><strong id="client-quote-project">AI 品牌影片製作</strong><br><span id="client-quote-date">報價日期</span></div>
+      </header>
+      <div class="client-meta">
+        <div><span>客戶</span><strong id="client-quote-client">客戶名稱</strong></div>
+        <div><span>報價有效期限</span><strong id="client-quote-valid">—</strong></div>
+        <div><span>成片規格</span><strong id="client-quote-spec">—</strong></div>
+        <div><span>製作模型</span><strong id="client-quote-model">—</strong></div>
+      </div>
+      <table class="quote-table"><thead><tr><th>報價項目</th><th>說明</th><th>金額</th></tr></thead><tbody id="client-quote-items"></tbody></table>
+      <div class="client-total">
+        <dl class="result-list">
+          <div class="result-line"><dt>未稅金額</dt><dd id="client-subtotal">NT$0</dd></div>
+          <div class="result-line"><dt>營業稅</dt><dd id="client-tax">NT$0</dd></div>
+          <div class="result-line grand"><dt>含稅總價</dt><dd id="client-grand-total">NT$0</dd></div>
+        </dl>
+      </div>
+      <div class="quote-note" id="client-note"></div>
+    </article>
+  </section>
+
+  <dialog class="help-dialog" id="help-dialog" aria-labelledby="help-dialog-title">
+    <div class="help-dialog-head">
+      <h2 id="help-dialog-title">欄位說明</h2>
+      <button class="dialog-close" id="help-dialog-close" type="button" aria-label="關閉說明視窗">×</button>
+    </div>
+    <div class="help-dialog-body">
+      <p id="help-dialog-description"></p>
+      <p class="help-formula" id="help-dialog-formula"></p>
+      <div class="help-example"><strong>實際例子</strong><span id="help-dialog-example"></span></div>
+      <p class="help-note" id="help-dialog-note"></p>
+    </div>
+  </dialog>
+  <script>
+  /* QUOTE_CORE_START */
+  (() => {
+    'use strict';
+
+    const finite = (value, fallback = 0) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
+
+    const sumRows = (rows, quantityKey, rateKey) =>
+      (Array.isArray(rows) ? rows : []).reduce(
+        (sum, row) => sum + Math.max(0, finite(row[quantityKey])) * Math.max(0, finite(row[rateKey])),
+        0
+      );
+
+    function validate(input = {}) {
+      const errors = {};
+      if (finite(input.adoptionRate) <= 0) errors.adoptionRate = '採用率必須大於 0';
+      if (finite(input.episodes) <= 0) errors.episodes = '集數必須大於 0';
+      if (finite(input.versions) <= 0) errors.versions = '版本數必須大於 0';
+      if (finite(input.creditPackCredits) <= 0) errors.creditPackCredits = '點數數量必須大於 0';
+      if (finite(input.exchangeRate) <= 0) errors.exchangeRate = '匯率必須大於 0';
+      if (finite(input.minutes) * 60 + finite(input.seconds) <= 0) errors.duration = '成片長度必須大於 0';
+      return errors;
+    }
+
+    function calculate(input = {}) {
+      const minutes = Math.max(0, finite(input.minutes));
+      const seconds = Math.max(0, finite(input.seconds));
+      const episodes = Math.max(0, finite(input.episodes));
+      const versions = Math.max(0, finite(input.versions));
+      const adoptionRate = Math.max(0.000001, finite(input.adoptionRate));
+      const revisionRate = Math.max(0, finite(input.revisionRate));
+      const creditsPerSecond = Math.max(0, finite(input.creditsPerSecond));
+      const creditPackCredits = Math.max(0.000001, finite(input.creditPackCredits));
+      const creditPackUsd = Math.max(0, finite(input.creditPackUsd));
+      const exchangeRate = Math.max(0, finite(input.exchangeRate));
+      const overseasFeeRate = Math.max(0, finite(input.overseasFeeRate));
+      const finishedSeconds = (minutes * 60 + seconds) * episodes * versions;
+      const firstPassSeconds = finishedSeconds / (adoptionRate / 100);
+      const revisionSeconds = firstPassSeconds * (revisionRate / 100);
+      const generatedSeconds = firstPassSeconds + revisionSeconds;
+      const unusedSeconds = Math.max(0, generatedSeconds - finishedSeconds);
+      const credits = generatedSeconds * creditsPerSecond;
+      const usdPerCredit = creditPackUsd / creditPackCredits;
+      const twdPerCredit = usdPerCredit * exchangeRate * (1 + overseasFeeRate / 100);
+      const modelCostUsd = credits * usdPerCredit;
+      const modelCostTwd = credits * twdPerCredit;
+      const laborCost = sumRows(input.labor, 'days', 'dayRate');
+      const otherCost = sumRows(input.other, 'quantity', 'unitPrice');
+      const directCost = modelCostTwd + laborCost + otherCost;
+      const managementFee = directCost * Math.max(0, finite(input.managementRate)) / 100;
+      const contingency = (directCost + managementFee) * Math.max(0, finite(input.contingencyRate)) / 100;
+      const quoteBase = directCost + managementFee + contingency;
+      const profit = quoteBase * Math.max(0, finite(input.profitRate)) / 100;
+      const discount = Math.max(0, finite(input.discount));
+      const subtotalBeforeTax = Math.max(0, quoteBase + profit - discount);
+      const tax = subtotalBeforeTax * Math.max(0, finite(input.taxRate)) / 100;
+      const grandTotal = subtotalBeforeTax + tax;
+      const grossMargin = subtotalBeforeTax > 0 ? (subtotalBeforeTax - directCost) / subtotalBeforeTax * 100 : 0;
+
+      return {
+        finishedSeconds, firstPassSeconds, revisionSeconds, generatedSeconds, unusedSeconds,
+        credits, usdPerCredit, twdPerCredit, modelCostUsd, modelCostTwd,
+        laborCost, otherCost, directCost, managementFee, contingency, quoteBase,
+        profit, discount, subtotalBeforeTax, tax, grandTotal, grossMargin,
+        perFinishedSecond: finishedSeconds > 0 ? grandTotal / finishedSeconds : 0,
+        perFinishedMinute: finishedSeconds > 0 ? grandTotal / (finishedSeconds / 60) : 0,
+        perEpisode: episodes > 0 ? grandTotal / episodes : 0
+      };
+    }
+
+    const money = value => `NT$${new Intl.NumberFormat('zh-TW', {
+      maximumFractionDigits: 0
+    }).format(finite(value))}`;
+
+    const number = (value, digits = 1) => new Intl.NumberFormat('zh-TW', {
+      maximumFractionDigits: digits
+    }).format(finite(value));
+
+    window.QuoteCalculator = { calculate, validate, money, number };
+  })();
+  /* QUOTE_CORE_END */
+  </script>
+  <script>
+  (() => {
+    'use strict';
+
+    const STORAGE_KEY = 'pj26-ai-quote-calculator-v1';
+    const SAVE_FILE_FORMAT = 'ai-video-quote-calculator';
+    const SAVE_FILE_VERSION = 1;
+    const CREDIT_PACKS = {
+      'starter-monthly': { credits: 200, usd: 15 },
+      'plus-monthly': { credits: 1000, usd: 49 },
+      'ultra3000-monthly': { credits: 3000, usd: 129 },
+      'ultra6000-monthly': { credits: 6000, usd: 250 },
+      'ultra9000-monthly': { credits: 9000, usd: 375 },
+      'starter-annual': { credits: 200, usd: 15 },
+      'plus-annual': { credits: 1000, usd: 39 },
+      'ultra3000-annual': { credits: 3000, usd: 99 },
+      'ultra6000-annual': { credits: 6000, usd: 193.50 },
+      'ultra9000-annual': { credits: 9000, usd: 270 },
+      100: { credits: 100, usd: 5.30 },
+      200: { credits: 200, usd: 10.19 },
+      500: { credits: 500, usd: 25 },
+      1000: { credits: 1000, usd: 48 },
+      2000: { credits: 2000, usd: 89 },
+      4000: { credits: 4000, usd: 179 },
+      5000: { credits: 5000, usd: 213 }
+    };
+    const DEFAULT_LABOR = [
+      { name: '企劃／腳本', days: 1, dayRate: 5000 },
+      { name: '導演／提示詞設計', days: 1, dayRate: 6000 },
+      { name: 'AI 生成與 QC', days: 1.5, dayRate: 5000 },
+      { name: '剪輯／動態設計', days: 1, dayRate: 5500 },
+      { name: '聲音／調色', days: 0.5, dayRate: 5000 },
+      { name: '專案管理', days: 0.5, dayRate: 5000 }
+    ];
+    const DEFAULT_OTHER = [
+      { name: '音樂／音效授權', quantity: 1, unitPrice: 1500 },
+      { name: '配音', quantity: 1, unitPrice: 0 },
+      { name: '素材／商用授權', quantity: 1, unitPrice: 0 },
+      { name: '儲存／運算／備份', quantity: 1, unitPrice: 500 },
+      { name: '法務／合約審閱', quantity: 1, unitPrice: 0 }
+    ];
+    const PRESETS = {
+      social: { minutes: 0, seconds: 30, episodes: 1, versions: 1, adoptionRate: 40, revisionRate: 20, laborScale: 1 },
+      brand: { minutes: 3, seconds: 0, episodes: 1, versions: 1, adoptionRate: 20, revisionRate: 20, laborScale: 2 },
+      series: { minutes: 1, seconds: 0, episodes: 10, versions: 1, adoptionRate: 40, revisionRate: 20, laborScale: 3 },
+      film: { minutes: 100, seconds: 0, episodes: 1, versions: 1, adoptionRate: 10, revisionRate: 20, laborScale: 90 }
+    };
+    const HELP_CONTENT = {
+      'adoption-rate': {
+        title: '素材採用率是什麼？',
+        description: '素材採用率是最後真正放進成片的秒數，占全部首版生成素材的比例。它用來反映 AI 生成需要多次嘗試、挑片與淘汰素材的實際狀況。採用率越低，需要生成的素材越多，模型成本與挑片時間也會提高。',
+        formula: '首版生成秒數＝成片總秒數 ÷ 素材採用率',
+        example: '30 秒影片若採用率為 20%，首版需要生成約 150 秒素材；若採用率為 40%，則需要生成約 75 秒素材。',
+        note: '建議起點：社群短影音可先抓 40%；一般商用敘事影片約 20%；角色一致性或高規格長片可能只有 10%。這不是固定行情，仍要依題材與品質要求調整。'
+      },
+      'revision-rate': {
+        title: '修改預備量是什麼？',
+        description: '修改預備量是第一版完成後，為客戶調整、畫面重生、角色或商品細節修正所保留的額外生成量。AI 影片常無法只改畫面中的一小部分，因此修改可能需要重新生成整顆鏡頭。',
+        formula: '修改生成秒數＝首版生成秒數 × 修改預備量',
+        example: '首版預估生成 150 秒，修改預備量設為 20%，就會額外保留 30 秒生成量；總生成量為 180 秒。',
+        note: '這是成本預備，不代表無限修改。正式報價仍應寫清楚包含的修改輪次、修改範圍與追加報價條件。'
+      },
+      'management-rate': {
+        title: '管理費是什麼？',
+        description: '管理費用來涵蓋不直接出現在成片畫面中、但專案必須執行的協調工作，例如需求整理、排程、會議、客戶溝通、版本管理、進度追蹤、檔案交付與行政作業。',
+        formula: '管理費＝直接成本 × 管理費率',
+        example: '模型、人力與其他費用合計為 NT$100,000，管理費率為 10%，管理費就是 NT$10,000。',
+        note: '若專案溝通層級多、版本多、時程緊或需要跨團隊協作，可提高管理費率；單純素材測試則可降低。'
+      },
+      'contingency-rate': {
+        title: '風險預備金是什麼？',
+        description: '風險預備金是為尚未確定、但可能發生的製作風險預留預算，例如生成品質波動、平台價格或規則改變、素材授權差異、臨時重生、技術問題與需求邊界不明。',
+        formula: '風險預備金＝（直接成本＋管理費）× 風險預備金率',
+        example: '直接成本 NT$100,000、管理費 NT$10,000，風險預備金率為 10%，會再保留 NT$11,000。',
+        note: '風險越清楚、前期測試越完整，比例可以越低；首次合作、創新技術或高一致性要求的專案，建議保留較高比例。'
+      }
+    };
+    const PERSISTED_IDS = [
+      'project-name', 'client-name', 'quote-date', 'valid-until', 'preset-select',
+      'duration-minutes', 'duration-seconds', 'episodes', 'versions', 'aspect-ratio',
+      'resolution', 'deliverables', 'model-name', 'adoption-rate', 'revision-rate',
+      'custom-credits-per-second', 'credit-pack', 'credit-pack-credits', 'credit-pack-usd',
+      'exchange-rate', 'overseas-fee-rate', 'management-rate', 'contingency-rate',
+      'profit-rate', 'discount', 'tax-rate', 'rounding-unit', 'quote-note'
+    ];
+    const $ = id => document.getElementById(id);
+    const numeric = id => Number($(id).value) || 0;
+    const todayIso = () => {
+      const now = new Date();
+      const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 10);
+    };
+    const addDaysIso = (iso, days) => {
+      const date = new Date(`${iso}T12:00:00`);
+      date.setDate(date.getDate() + days);
+      return date.toISOString().slice(0, 10);
+    };
+
+    function makeInput(value, className, type = 'text', step = '') {
+      const input = document.createElement('input');
+      input.type = type;
+      input.value = value;
+      input.className = className;
+      if (type === 'number') {
+        input.min = '0';
+        if (step) input.step = step;
+        input.inputMode = 'decimal';
+      }
+      return input;
+    }
+
+    function makeDeleteButton(label) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn-danger btn-small remove-row';
+      button.textContent = '刪除';
+      button.setAttribute('aria-label', `刪除${label}`);
+      return button;
+    }
+
+    function addLaborRow(item = { name: '新增工作項目', days: 1, dayRate: 5000 }) {
+      const row = document.createElement('tr');
+      row.className = 'cost-row labor-row';
+      const nameCell = document.createElement('td');
+      nameCell.append(makeInput(item.name, 'row-name labor-name'));
+      const daysCell = document.createElement('td');
+      daysCell.append(makeInput(item.days, 'labor-days', 'number', '0.25'));
+      const rateCell = document.createElement('td');
+      rateCell.append(makeInput(item.dayRate, 'labor-rate', 'number', '100'));
+      const totalCell = document.createElement('td');
+      totalCell.className = 'row-total';
+      totalCell.textContent = 'NT$0';
+      const actionCell = document.createElement('td');
+      actionCell.append(makeDeleteButton(item.name));
+      row.append(nameCell, daysCell, rateCell, totalCell, actionCell);
+      $('labor-rows').append(row);
+    }
+
+    function addOtherRow(item = { name: '新增成本項目', quantity: 1, unitPrice: 0 }) {
+      const row = document.createElement('tr');
+      row.className = 'cost-row other-row';
+      const nameCell = document.createElement('td');
+      nameCell.append(makeInput(item.name, 'row-name other-name'));
+      const quantityCell = document.createElement('td');
+      quantityCell.append(makeInput(item.quantity, 'other-quantity', 'number', '0.25'));
+      const rateCell = document.createElement('td');
+      rateCell.append(makeInput(item.unitPrice, 'other-rate', 'number', '100'));
+      const totalCell = document.createElement('td');
+      totalCell.className = 'row-total';
+      totalCell.textContent = 'NT$0';
+      const actionCell = document.createElement('td');
+      actionCell.append(makeDeleteButton(item.name));
+      row.append(nameCell, quantityCell, rateCell, totalCell, actionCell);
+      $('other-rows').append(row);
+    }
+
+    function serializeRows(container) {
+      return [...container.querySelectorAll('tr')].map(row => {
+        if (row.classList.contains('labor-row')) return {
+          name: row.querySelector('.labor-name').value.trim(),
+          days: Number(row.querySelector('.labor-days').value) || 0,
+          dayRate: Number(row.querySelector('.labor-rate').value) || 0
+        };
+        return {
+          name: row.querySelector('.other-name').value.trim(),
+          quantity: Number(row.querySelector('.other-quantity').value) || 0,
+          unitPrice: Number(row.querySelector('.other-rate').value) || 0
+        };
+      });
+    }
+
+    function selectedCreditMode() {
+      return document.querySelector('input[name="credit-mode"]:checked')?.value || 'preferred';
+    }
+
+    let lastHelpTrigger = null;
+    function openHelpDialog(key, trigger) {
+      const content = HELP_CONTENT[key];
+      if (!content) return;
+      lastHelpTrigger = trigger || null;
+      setText('help-dialog-title', content.title);
+      setText('help-dialog-description', content.description);
+      setText('help-dialog-formula', content.formula);
+      setText('help-dialog-example', content.example);
+      setText('help-dialog-note', content.note);
+      $('help-dialog').showModal();
+    }
+
+    function closeHelpDialog() {
+      $('help-dialog').close();
+    }
+
+    function collectInput() {
+      const mode = selectedCreditMode();
+      const creditsPerSecond = mode === 'preferred' ? 9 : mode === 'regular' ? 16 : numeric('custom-credits-per-second');
+      return {
+        minutes: numeric('duration-minutes'), seconds: numeric('duration-seconds'),
+        episodes: numeric('episodes'), versions: numeric('versions'),
+        adoptionRate: numeric('adoption-rate'), revisionRate: numeric('revision-rate'),
+        creditsPerSecond, creditPackCredits: numeric('credit-pack-credits'),
+        creditPackUsd: numeric('credit-pack-usd'), exchangeRate: numeric('exchange-rate'),
+        overseasFeeRate: numeric('overseas-fee-rate'),
+        labor: serializeRows($('labor-rows')), other: serializeRows($('other-rows')),
+        managementRate: numeric('management-rate'), contingencyRate: numeric('contingency-rate'),
+        profitRate: numeric('profit-rate'), discount: numeric('discount'), taxRate: numeric('tax-rate')
+      };
+    }
+
+    function roundedQuote(result) {
+      const unit = Math.max(1, numeric('rounding-unit'));
+      const subtotalBeforeTax = Math.ceil(result.subtotalBeforeTax / unit) * unit;
+      const tax = subtotalBeforeTax * numeric('tax-rate') / 100;
+      const grandTotal = subtotalBeforeTax + tax;
+      return {
+        ...result, subtotalBeforeTax, tax, grandTotal,
+        grossMargin: subtotalBeforeTax > 0 ? (subtotalBeforeTax - result.directCost) / subtotalBeforeTax * 100 : 0,
+        perFinishedSecond: result.finishedSeconds > 0 ? grandTotal / result.finishedSeconds : 0,
+        perFinishedMinute: result.finishedSeconds > 0 ? grandTotal / (result.finishedSeconds / 60) : 0,
+        perEpisode: numeric('episodes') > 0 ? grandTotal / numeric('episodes') : 0
+      };
+    }
+
+    function setText(id, value) { $(id).textContent = value; }
+    function percent(part, whole) { return whole > 0 ? part / whole * 100 : 0; }
+    function durationLabel(seconds) {
+      if (seconds >= 60) return `${window.QuoteCalculator.number(seconds / 60, 1)} 分鐘`;
+      return `${window.QuoteCalculator.number(seconds, 1)} 秒`;
+    }
+    function formatDate(iso) {
+      if (!iso) return '—';
+      const date = new Date(`${iso}T12:00:00`);
+      return new Intl.DateTimeFormat('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+    }
+
+    function updateRowTotals() {
+      document.querySelectorAll('.labor-row').forEach(row => {
+        const value = (Number(row.querySelector('.labor-days').value) || 0) * (Number(row.querySelector('.labor-rate').value) || 0);
+        row.querySelector('.row-total').textContent = window.QuoteCalculator.money(value);
+      });
+      document.querySelectorAll('.other-row').forEach(row => {
+        const value = (Number(row.querySelector('.other-quantity').value) || 0) * (Number(row.querySelector('.other-rate').value) || 0);
+        row.querySelector('.row-total').textContent = window.QuoteCalculator.money(value);
+      });
+    }
+
+    function showErrors(errors) {
+      const mapping = {
+        adoptionRate: 'adoption-rate', episodes: 'episodes', versions: 'versions',
+        creditPackCredits: 'credit-pack-credits', exchangeRate: 'exchange-rate'
+      };
+      document.querySelectorAll('.field-error').forEach(node => { node.textContent = ''; });
+      document.querySelectorAll('[aria-invalid="true"]').forEach(node => node.removeAttribute('aria-invalid'));
+      Object.entries(mapping).forEach(([key, id]) => {
+        if (!errors[key]) return;
+        $(id).setAttribute('aria-invalid', 'true');
+        $(`${id}-error`).textContent = errors[key];
+      });
+      if (errors.duration) $('duration-error').textContent = errors.duration;
+      const messages = Object.values(errors);
+      $('error-summary').classList.toggle('show', messages.length > 0);
+      $('error-summary').textContent = messages.length ? `請先修正：${messages.join('、')}` : '';
+    }
+
+    function buildClientSummary(result) {
+      setText('client-quote-project', $('project-name').value.trim() || '未命名專案');
+      setText('client-quote-client', $('client-name').value.trim() || '—');
+      setText('client-quote-date', `報價日期｜${formatDate($('quote-date').value)}`);
+      setText('client-quote-valid', formatDate($('valid-until').value));
+      setText('client-quote-spec', `${durationLabel((numeric('duration-minutes') * 60 + numeric('duration-seconds')))} × ${numeric('episodes')} 集 × ${numeric('versions')} 版本｜${$('aspect-ratio').value}｜${$('resolution').value}`);
+      setText('client-quote-model', $('model-name').value.trim() || '—');
+      const tbody = $('client-quote-items');
+      tbody.textContent = '';
+      const row = document.createElement('tr');
+      const title = document.createElement('td');
+      const desc = document.createElement('td');
+      const amount = document.createElement('td');
+      title.textContent = 'AI 影音企劃與製作';
+      desc.textContent = $('deliverables').value.trim() || '依專案需求執行';
+      amount.textContent = window.QuoteCalculator.money(result.subtotalBeforeTax);
+      row.append(title, desc, amount);
+      tbody.append(row);
+      setText('client-subtotal', window.QuoteCalculator.money(result.subtotalBeforeTax));
+      setText('client-tax', window.QuoteCalculator.money(result.tax));
+      setText('client-grand-total', window.QuoteCalculator.money(result.grandTotal));
+      setText('client-note', $('quote-note').value.trim());
+    }
+
+    function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
+      const paragraphs = String(text || '').split(/\n/);
+      let currentY = y;
+      paragraphs.forEach((paragraph, paragraphIndex) => {
+        const chars = [...paragraph];
+        let line = '';
+        if (!chars.length) currentY += lineHeight;
+        chars.forEach((char, index) => {
+          const test = line + char;
+          if (ctx.measureText(test).width > maxWidth && line) {
+            ctx.fillText(line, x, currentY);
+            currentY += lineHeight;
+            line = char;
+          } else {
+            line = test;
+          }
+          if (index === chars.length - 1 && line) {
+            ctx.fillText(line, x, currentY);
+            currentY += lineHeight;
+          }
+        });
+        if (paragraphIndex < paragraphs.length - 1) currentY += lineHeight * 0.25;
+      });
+      return currentY;
+    }
+
+    function safeFileName(value) {
+      return (value || 'AI影音報價')
+        .replace(/[\\/:*?"<>|]/g, '-')
+        .replace(/\s+/g, '-')
+        .slice(0, 60);
+    }
+
+    function exportPng() {
+      render();
+      if (!lastResult) {
+        $('error-summary').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      const measureCanvas = document.createElement('canvas');
+      const measure = measureCanvas.getContext('2d');
+      const width = 1440;
+      const margin = 112;
+      const contentWidth = width - margin * 2;
+      const note = $('quote-note').value.trim();
+      measure.font = '32px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      let noteLines = 1;
+      let line = '';
+      [...note].forEach(char => {
+        const test = line + char;
+        if (measure.measureText(test).width > contentWidth - 64 && line) {
+          noteLines += 1;
+          line = char;
+        } else line = test;
+      });
+      const height = Math.max(1900, 1740 + noteLines * 48);
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#F0EDE4';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = '#004741';
+      ctx.fillRect(0, 0, width, 300);
+      ctx.fillStyle = '#21F1A8';
+      ctx.fillRect(margin, 82, 86, 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 68px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText('AI 影音製作報價', margin, 170);
+      ctx.font = '400 28px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillStyle = '#cfe2dc';
+      ctx.fillText(`${$('project-name').value.trim() || '未命名專案'}｜${formatDate($('quote-date').value)}`, margin, 225);
+
+      let y = 380;
+      ctx.fillStyle = '#10231f';
+      ctx.font = '600 26px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText('客戶', margin, y);
+      ctx.fillText('有效期限', 760, y);
+      ctx.font = '700 36px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText($('client-name').value.trim() || '—', margin, y + 52);
+      ctx.fillText(formatDate($('valid-until').value), 760, y + 52);
+      y += 145;
+
+      ctx.strokeStyle = '#b7c5bd';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke();
+      y += 70;
+      ctx.font = '600 26px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillStyle = '#566760';
+      ctx.fillText('製作規格', margin, y);
+      ctx.fillText('製作模型', 760, y);
+      ctx.font = '700 31px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillStyle = '#10231f';
+      const oneClip = numeric('duration-minutes') * 60 + numeric('duration-seconds');
+      ctx.fillText(`${durationLabel(oneClip)} × ${numeric('episodes')} 集 × ${numeric('versions')} 版本`, margin, y + 52);
+      ctx.fillText(`${$('model-name').value}｜${$('resolution').value}`, 760, y + 52);
+      ctx.font = '400 26px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillStyle = '#566760';
+      ctx.fillText(`${$('aspect-ratio').value}｜${$('deliverables').value.trim().slice(0, 34)}`, margin, y + 98);
+      y += 190;
+
+      ctx.fillStyle = '#004741';
+      ctx.fillRect(margin, y, contentWidth, 72);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '600 27px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText('報價項目', margin + 28, y + 47);
+      ctx.textAlign = 'right';
+      ctx.fillText('金額', width - margin - 28, y + 47);
+      ctx.textAlign = 'left';
+      y += 72;
+      ctx.fillStyle = '#fffdf7';
+      ctx.fillRect(margin, y, contentWidth, 170);
+      ctx.fillStyle = '#10231f';
+      ctx.font = '700 32px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText('AI 影音企劃與製作', margin + 28, y + 58);
+      ctx.font = '400 25px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillStyle = '#566760';
+      drawWrappedText(ctx, $('deliverables').value.trim(), margin + 28, y + 104, 760, 38);
+      ctx.fillStyle = '#10231f';
+      ctx.font = '700 34px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(window.QuoteCalculator.money(lastResult.subtotalBeforeTax), width - margin - 28, y + 92);
+      ctx.textAlign = 'left';
+      y += 235;
+
+      const totalX = 760;
+      const totalWidth = width - margin - totalX;
+      ctx.fillStyle = '#10231f';
+      ctx.font = '400 28px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText('未稅金額', totalX, y);
+      ctx.textAlign = 'right';
+      ctx.fillText(window.QuoteCalculator.money(lastResult.subtotalBeforeTax), width - margin, y);
+      ctx.textAlign = 'left';
+      y += 55;
+      ctx.fillText('營業稅', totalX, y);
+      ctx.textAlign = 'right';
+      ctx.fillText(window.QuoteCalculator.money(lastResult.tax), width - margin, y);
+      ctx.textAlign = 'left';
+      y += 38;
+      ctx.fillStyle = '#004741';
+      ctx.fillRect(totalX, y, totalWidth, 4);
+      y += 72;
+      ctx.font = '700 31px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText('含稅總價', totalX, y);
+      ctx.textAlign = 'right';
+      ctx.font = '700 48px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText(window.QuoteCalculator.money(lastResult.grandTotal), width - margin, y);
+      ctx.textAlign = 'left';
+      y += 125;
+
+      ctx.fillStyle = '#dce9e4';
+      ctx.fillRect(margin, y, contentWidth, Math.max(190, noteLines * 48 + 105));
+      ctx.fillStyle = '#004741';
+      ctx.font = '700 27px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText('報價備註', margin + 32, y + 50);
+      ctx.fillStyle = '#10231f';
+      ctx.font = '400 26px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      drawWrappedText(ctx, note, margin + 32, y + 98, contentWidth - 64, 43);
+
+      ctx.fillStyle = '#566760';
+      ctx.font = '400 22px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText('此文件由 AI 影音報價計算器產出，實際合作內容以雙方簽訂之合約為準。', margin, height - 70);
+
+      canvas.toBlob(blob => {
+        if (!blob) return;
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${safeFileName($('project-name').value)}-報價摘要.png`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      }, 'image/png');
+    }
+
+    function printQuote() {
+      render();
+      if (!lastResult) {
+        $('error-summary').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      buildClientSummary(lastResult);
+      window.print();
+    }
+
+    let lastResult = null;
+    function render() {
+      updateRowTotals();
+      $('custom-credits-per-second').disabled = selectedCreditMode() !== 'custom';
+      const input = collectInput();
+      const errors = window.QuoteCalculator.validate(input);
+      showErrors(errors);
+      if (Object.keys(errors).length) return;
+      const result = roundedQuote(window.QuoteCalculator.calculate(input));
+      lastResult = result;
+      setText('grand-total', window.QuoteCalculator.money(result.grandTotal));
+      setText('subtotal-before-tax', window.QuoteCalculator.money(result.subtotalBeforeTax));
+      setText('direct-cost', window.QuoteCalculator.money(result.directCost));
+      setText('gross-margin', `${window.QuoteCalculator.number(result.grossMargin, 1)}%`);
+      setText('per-second', window.QuoteCalculator.money(result.perFinishedSecond));
+      setText('finished-seconds', durationLabel(result.finishedSeconds));
+      setText('first-pass-seconds', durationLabel(result.firstPassSeconds));
+      setText('revision-seconds', durationLabel(result.revisionSeconds));
+      setText('generated-seconds', durationLabel(result.generatedSeconds));
+      setText('unused-seconds', durationLabel(result.unusedSeconds));
+      setText('total-credits', `${window.QuoteCalculator.number(Math.ceil(result.credits), 0)} 點`);
+      setText('model-cost', window.QuoteCalculator.money(result.modelCostTwd));
+      setText('labor-cost', window.QuoteCalculator.money(result.laborCost));
+      setText('other-cost', window.QuoteCalculator.money(result.otherCost));
+      setText('management-fee', window.QuoteCalculator.money(result.managementFee));
+      setText('contingency', window.QuoteCalculator.money(result.contingency));
+      setText('profit', window.QuoteCalculator.money(result.profit));
+      setText('discount-result', `− ${window.QuoteCalculator.money(result.discount)}`);
+      setText('tax', window.QuoteCalculator.money(result.tax));
+      setText('per-credit', `${window.QuoteCalculator.money(result.twdPerCredit)}／點`);
+      setText('pack-equivalent', `${window.QuoteCalculator.number(Math.ceil(result.credits / input.creditPackCredits), 0)} 份`);
+      setText('per-minute', window.QuoteCalculator.money(result.perFinishedMinute));
+      setText('per-episode', window.QuoteCalculator.money(result.perEpisode));
+      setText('labor-total', window.QuoteCalculator.money(result.laborCost));
+      setText('other-total', window.QuoteCalculator.money(result.otherCost));
+      const shares = [
+        ['model', percent(result.modelCostTwd, result.directCost)],
+        ['labor', percent(result.laborCost, result.directCost)],
+        ['other', percent(result.otherCost, result.directCost)]
+      ];
+      shares.forEach(([name, share]) => {
+        $(`${name}-bar`).style.width = `${Math.min(100, share)}%`;
+        setText(`${name}-share`, `${window.QuoteCalculator.number(share, 1)}%`);
+      });
+      buildClientSummary(result);
+    }
+
+    function currentState() {
+      const fields = {};
+      PERSISTED_IDS.forEach(id => { fields[id] = $(id).value; });
+      return {
+        fields,
+        creditMode: selectedCreditMode(),
+        labor: serializeRows($('labor-rows')),
+        other: serializeRows($('other-rows'))
+      };
+    }
+
+    function applyState(state) {
+      if (!state || typeof state !== 'object' || Array.isArray(state)) return;
+      Object.entries(state.fields || {}).forEach(([id, value]) => {
+        if ($(id)) $(id).value = value;
+      });
+      const radio = [...document.querySelectorAll('input[name="credit-mode"]')]
+        .find(option => option.value === state.creditMode);
+      if (radio) radio.checked = true;
+      populateRows(state.labor, state.other);
+      render();
+    }
+
+    function createBackup() {
+      return {
+        format: SAVE_FILE_FORMAT,
+        version: SAVE_FILE_VERSION,
+        savedAt: new Date().toISOString(),
+        app: 'AI 影音報價計算器',
+        state: currentState()
+      };
+    }
+
+    function backupFilename() {
+      const projectName = $('project-name').value.trim() || '未命名專案';
+      const safeProjectName = projectName
+        .replace(/[\\/:*?"<>|\u0000-\u001F]+/g, '-')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 60) || '未命名專案';
+      return `AI影音報價-${safeProjectName}-${todayIso()}.json`;
+    }
+
+    function downloadSaveFile() {
+      const blob = new Blob([JSON.stringify(createBackup(), null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = backupFilename();
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      setText('save-status', '已下載 JSON 存檔');
+    }
+
+    function validateBackup(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data) || data.format !== SAVE_FILE_FORMAT) {
+        throw new Error('這不是 AI 影音報價計算器存檔');
+      }
+      if (data.version !== SAVE_FILE_VERSION) throw new Error('不支援此存檔版本');
+      const state = data.state;
+      if (!state || typeof state !== 'object' || Array.isArray(state)
+        || !state.fields || typeof state.fields !== 'object' || Array.isArray(state.fields)
+        || !Array.isArray(state.labor) || !Array.isArray(state.other)) {
+        throw new Error('存檔內容不完整');
+      }
+      return state;
+    }
+
+    async function importSaveFile(file) {
+      if (!file) return false;
+      try {
+        const data = JSON.parse(await file.text());
+        const state = validateBackup(data);
+        applyState(state);
+        saveState();
+        setText('save-status', `已載入存檔：${file.name}`);
+        return true;
+      } catch (error) {
+        setText('save-status', `載入失敗：${error instanceof Error ? error.message : '檔案格式錯誤'}`);
+        return false;
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState()));
+        setText('save-status', `已儲存 ${new Intl.DateTimeFormat('zh-TW', { hour: '2-digit', minute: '2-digit' }).format(new Date())}`);
+      } catch (error) {
+        setText('save-status', '瀏覽器無法儲存');
+      }
+    }
+
+    function populateRows(labor, other) {
+      $('labor-rows').textContent = '';
+      $('other-rows').textContent = '';
+      (Array.isArray(labor) ? labor : DEFAULT_LABOR).forEach(addLaborRow);
+      (Array.isArray(other) ? other : DEFAULT_OTHER).forEach(addOtherRow);
+    }
+
+    function loadState() {
+      const today = todayIso();
+      $('quote-date').value = today;
+      $('valid-until').value = addDaysIso(today, 14);
+      populateRows(DEFAULT_LABOR, DEFAULT_OTHER);
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const state = JSON.parse(raw);
+        if (!state || typeof state !== 'object') return;
+        applyState(state);
+        setText('save-status', '已載入上次試算');
+      } catch (error) {
+        localStorage.removeItem(STORAGE_KEY);
+        setText('save-status', '已略過損壞的儲存資料');
+      }
+    }
+
+    function applyPreset(id) {
+      const preset = PRESETS[id];
+      if (!preset) return;
+      $('duration-minutes').value = preset.minutes;
+      $('duration-seconds').value = preset.seconds;
+      $('episodes').value = preset.episodes;
+      $('versions').value = preset.versions;
+      $('adoption-rate').value = preset.adoptionRate;
+      $('revision-rate').value = preset.revisionRate;
+      if (id === 'social') $('project-name').value = '30 秒直式社群影片';
+      if (id === 'brand') $('project-name').value = '3 分鐘品牌情境短劇';
+      if (id === 'series') $('project-name').value = 'AI 系列短劇｜1 分鐘 × 10 集';
+      if (id === 'film') $('project-name').value = '100 分鐘 AI 長片';
+      const scaled = DEFAULT_LABOR.map(item => ({ ...item, days: Math.round(item.days * preset.laborScale * 4) / 4 }));
+      populateRows(scaled, serializeRows($('other-rows')));
+      render();
+      scheduleSave();
+    }
+
+    function resetState() {
+      if (!window.confirm('確定要清除目前試算並恢復預設值嗎？')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      window.location.reload();
+    }
+
+    let saveTimer;
+    function scheduleSave() {
+      clearTimeout(saveTimer);
+      setText('save-status', '儲存中…');
+      saveTimer = setTimeout(saveState, 350);
+    }
+
+    function handleFormChange(event) {
+      if (event.target.id === 'credit-pack') {
+        const pack = CREDIT_PACKS[event.target.value];
+        if (pack) {
+          $('credit-pack-credits').value = pack.credits;
+          $('credit-pack-usd').value = pack.usd;
+        }
+      }
+      if (event.target.id !== 'preset-select') $('preset-select').value = 'custom';
+      render();
+      scheduleSave();
+    }
+
+    $('quote-form').addEventListener('input', handleFormChange);
+    $('quote-form').addEventListener('change', handleFormChange);
+    $('preset-select').addEventListener('change', event => applyPreset(event.target.value));
+    $('add-labor').addEventListener('click', () => { addLaborRow(); render(); scheduleSave(); });
+    $('add-other').addEventListener('click', () => { addOtherRow(); render(); scheduleSave(); });
+    document.addEventListener('click', event => {
+      const helpButton = event.target.closest('[data-help]');
+      if (helpButton) {
+        openHelpDialog(helpButton.dataset.help, helpButton);
+        return;
+      }
+      const button = event.target.closest('.remove-row');
+      if (!button) return;
+      button.closest('tr').remove();
+      render();
+      scheduleSave();
+    });
+    $('reset-button').addEventListener('click', resetState);
+    $('download-save-button').addEventListener('click', downloadSaveFile);
+    $('load-save-button').addEventListener('click', () => $('save-file-input').click());
+    $('save-file-input').addEventListener('change', async event => {
+      await importSaveFile(event.target.files?.[0]);
+      event.target.value = '';
+    });
+    $('png-button').addEventListener('click', exportPng);
+    $('print-button').addEventListener('click', printQuote);
+    $('help-dialog-close').addEventListener('click', closeHelpDialog);
+    $('help-dialog').addEventListener('click', event => {
+      if (event.target === $('help-dialog')) closeHelpDialog();
+    });
+    $('help-dialog').addEventListener('close', () => {
+      if (lastHelpTrigger) lastHelpTrigger.focus();
+    });
+
+    loadState();
+    render();
+
+    window.QuoteApp = { collectInput, render, applyPreset, addLaborRow, addOtherRow, currentState, applyState, createBackup, downloadSaveFile, importSaveFile, saveState, loadState, resetState, exportPng, printQuote, drawWrappedText, openHelpDialog, closeHelpDialog, getLastResult: () => lastResult };
+  })();
+  </script>
+</body>
+</html>
